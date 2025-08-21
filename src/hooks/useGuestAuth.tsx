@@ -1,9 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createGuest, getGuestBySessionId, updateGuestActivity } from '@/lib/database';
 
 interface GuestAuthContextType {
   isGuest: boolean;
   guestName: string | null;
-  loginAsGuest: (name?: string) => void;
+  guestId: string | null;
+  sessionId: string | null;
+  loginAsGuest: (name?: string) => Promise<void>;
   logoutGuest: () => void;
 }
 
@@ -12,37 +15,74 @@ const GuestAuthContext = createContext<GuestAuthContextType | undefined>(undefin
 export const GuestAuthProvider = ({ children }: { children: ReactNode }) => {
   const [isGuest, setIsGuest] = useState(false);
   const [guestName, setGuestName] = useState<string | null>(null);
+  const [guestId, setGuestId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedGuest = localStorage.getItem('guest_session');
-    if (storedGuest) {
-      const guestData = JSON.parse(storedGuest);
-      setIsGuest(true);
-      setGuestName(guestData.name || 'Guest User');
-    }
+    const initializeGuestSession = async () => {
+      const storedGuest = localStorage.getItem('guest_session');
+      if (storedGuest) {
+        const guestData = JSON.parse(storedGuest);
+        setSessionId(guestData.id);
+        
+        // Check if guest exists in database
+        const existingGuest = await getGuestBySessionId(guestData.id);
+        if (existingGuest) {
+          setIsGuest(true);
+          setGuestName(existingGuest.name);
+          setGuestId(existingGuest.id);
+          
+          // Update activity
+          await updateGuestActivity(guestData.id);
+        } else {
+          // Create guest in database
+          const newGuest = await createGuest(guestData.name || 'Guest User', guestData.id);
+          if (newGuest) {
+            setIsGuest(true);
+            setGuestName(newGuest.name);
+            setGuestId(newGuest.id);
+          }
+        }
+      }
+    };
+
+    initializeGuestSession();
   }, []);
 
-  const loginAsGuest = (name = 'Guest User') => {
+  const loginAsGuest = async (name = 'Guest User') => {
+    const newSessionId = `guest_${Date.now()}`;
     const guestData = { 
       name, 
       loginTime: Date.now(),
-      id: `guest_${Date.now()}`
+      id: newSessionId
     };
+    
     localStorage.setItem('guest_session', JSON.stringify(guestData));
-    setIsGuest(true);
-    setGuestName(name);
+    setSessionId(newSessionId);
+    
+    // Create guest in database
+    const newGuest = await createGuest(name, newSessionId);
+    if (newGuest) {
+      setIsGuest(true);
+      setGuestName(name);
+      setGuestId(newGuest.id);
+    }
   };
 
   const logoutGuest = () => {
     localStorage.removeItem('guest_session');
     setIsGuest(false);
     setGuestName(null);
+    setGuestId(null);
+    setSessionId(null);
   };
 
   return (
     <GuestAuthContext.Provider value={{
       isGuest,
       guestName,
+      guestId,
+      sessionId,
       loginAsGuest,
       logoutGuest
     }}>
