@@ -1,7 +1,10 @@
 import { Button } from "./button";
 import { Link } from "react-router-dom";
+import { useGuestAuth } from "@/hooks/useGuestAuth";
 
 export const Navbar = () => {
+  const { isGuest, guestName, logoutGuest } = useGuestAuth();
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-sm border-b border-border/50">
       <div className="container mx-auto px-6 py-4">
@@ -26,12 +29,30 @@ export const Navbar = () => {
           </div>
 
           <div className="flex items-center space-x-4">
-            <Button variant="secondary" size="sm">
-              Book a demo
-            </Button>
-            <Button variant="default" size="sm" asChild>
-              <Link to="/chat">Start now</Link>
-            </Button>
+            {isGuest ? (
+              <div className="flex items-center space-x-3">
+                <span className="text-sm text-muted-foreground">
+                  Welcome, {guestName}
+                </span>
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  onClick={logoutGuest}
+                  asChild
+                >
+                  <Link to="/">Logout</Link>
+                </Button>
+              </div>
+            ) : (
+              <>
+                <Button variant="secondary" size="sm">
+                  Book a demo
+                </Button>
+                <Button variant="default" size="sm" asChild>
+                  <Link to="/chat">Start now</Link>
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

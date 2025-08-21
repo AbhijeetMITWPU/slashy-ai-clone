@@ -1,7 +1,16 @@
 import { Button } from "./ui/button";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useGuestAuth } from "@/hooks/useGuestAuth";
 
 export const HeroSection = () => {
+  const { loginAsGuest } = useGuestAuth();
+  const navigate = useNavigate();
+
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    navigate('/chat');
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
       <div className="absolute inset-0 bg-gradient-background opacity-90"></div>
@@ -26,20 +35,33 @@ export const HeroSection = () => {
           Slashy connects to all your tools to complete entire tasks.
         </p>
 
-        {/* CTA Button */}
-        <Button 
-          variant="default" 
-          size="lg" 
-          className="mb-12 bg-white text-black hover:bg-gray-100 text-lg px-8 py-4 rounded-full shadow-glow"
-          asChild
-        >
-          <Link to="/chat" className="flex items-center space-x-2">
-            <div className="w-5 h-5 bg-red-500 rounded-sm flex items-center justify-center">
-              <span className="text-white text-xs font-bold">G</span>
+        {/* CTA Buttons */}
+        <div className="flex flex-col sm:flex-row gap-4 items-center justify-center mb-12">
+          <Button 
+            variant="default" 
+            size="lg" 
+            className="bg-white text-black hover:bg-gray-100 text-lg px-8 py-4 rounded-full shadow-glow"
+            onClick={handleGuestLogin}
+          >
+            <div className="flex items-center space-x-2">
+              <div className="w-5 h-5 bg-primary rounded-sm flex items-center justify-center">
+                <span className="text-white text-xs font-bold">G</span>
+              </div>
+              <span>Try as Guest</span>
             </div>
-            <span>Start now</span>
-          </Link>
-        </Button>
+          </Button>
+          
+          <Button 
+            variant="secondary" 
+            size="lg" 
+            className="text-lg px-8 py-4 rounded-full border-2 border-border/50 hover:border-border"
+            asChild
+          >
+            <Link to="/auth">
+              Sign Up Free
+            </Link>
+          </Button>
+        </div>
 
         {/* Category Pills */}
         <div className="flex flex-wrap justify-center gap-3 mb-16">
