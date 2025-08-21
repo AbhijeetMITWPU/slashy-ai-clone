@@ -1,0 +1,242 @@
+import { useState, useEffect } from 'react';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Badge } from './ui/badge';
+import { Switch } from './ui/switch';
+import { 
+  Calendar, 
+  Mail, 
+  MessageSquare, 
+  FileText, 
+  Github, 
+  Slack,
+  Settings,
+  Plus,
+  ExternalLink
+} from 'lucide-react';
+
+interface Integration {
+  id: string;
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  enabled: boolean;
+  status: 'connected' | 'disconnected' | 'error';
+  category: string;
+}
+
+interface IntegrationsPanelProps {
+  selectedIntegrations: string[];
+  onIntegrationsChange: (integrations: string[]) => void;
+}
+
+export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }: IntegrationsPanelProps) => {
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Mock integrations data - in real app this would come from Composio API
+  useEffect(() => {
+    const mockIntegrations: Integration[] = [
+      {
+        id: 'gmail',
+        name: 'Gmail',
+        description: 'Read and send emails, manage inbox',
+        icon: <Mail className="w-5 h-5" />,
+        enabled: false,
+        status: 'disconnected',
+        category: 'Communication'
+      },
+      {
+        id: 'calendar',
+        name: 'Google Calendar',
+        description: 'Manage events and scheduling',
+        icon: <Calendar className="w-5 h-5" />,
+        enabled: false,
+        status: 'disconnected',
+        category: 'Productivity'
+      },
+      {
+        id: 'slack',
+        name: 'Slack',
+        description: 'Send messages and manage channels',
+        icon: <Slack className="w-5 h-5" />,
+        enabled: false,
+        status: 'disconnected',
+        category: 'Communication'
+      },
+      {
+        id: 'github',
+        name: 'GitHub',
+        description: 'Manage repositories and issues',
+        icon: <Github className="w-5 h-5" />,
+        enabled: false,
+        status: 'disconnected',
+        category: 'Development'
+      },
+      {
+        id: 'notion',
+        name: 'Notion',
+        description: 'Create and manage documents',
+        icon: <FileText className="w-5 h-5" />,
+        enabled: false,
+        status: 'disconnected',
+        category: 'Productivity'
+      }
+    ];
+
+    // Set enabled state based on selected integrations
+    const updatedIntegrations = mockIntegrations.map(integration => ({
+      ...integration,
+      enabled: selectedIntegrations.includes(integration.id)
+    }));
+
+    setIntegrations(updatedIntegrations);
+    setLoading(false);
+  }, [selectedIntegrations]);
+
+  const toggleIntegration = (integrationId: string) => {
+    const integration = integrations.find(i => i.id === integrationId);
+    if (!integration) return;
+
+    if (integration.enabled) {
+      // Remove from selected
+      const newSelected = selectedIntegrations.filter(id => id !== integrationId);
+      onIntegrationsChange(newSelected);
+    } else {
+      // Add to selected
+      const newSelected = [...selectedIntegrations, integrationId];
+      onIntegrationsChange(newSelected);
+    }
+
+    // Update local state
+    setIntegrations(prev => prev.map(i => 
+      i.id === integrationId 
+        ? { ...i, enabled: !i.enabled, status: !i.enabled ? 'connected' : 'disconnected' as const }
+        : i
+    ));
+  };
+
+  const connectIntegration = (integrationId: string) => {
+    // In real app, this would initiate OAuth flow with Composio
+    console.log('Connecting integration:', integrationId);
+    
+    // Mock connection process
+    setIntegrations(prev => prev.map(i => 
+      i.id === integrationId 
+        ? { ...i, status: 'connected' as const }
+        : i
+    ));
+  };
+
+  const getStatusColor = (status: Integration['status']) => {
+    switch (status) {
+      case 'connected': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'error': return 'bg-red-500/20 text-red-400 border-red-500/30';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
+  const categories = Array.from(new Set(integrations.map(i => i.category)));
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-pulse text-muted-foreground">Loading integrations...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold">Integrations</h3>
+          <p className="text-sm text-muted-foreground">
+            Connect your tools to enhance AI capabilities
+          </p>
+        </div>
+        <Button variant="outline" size="sm">
+          <Plus className="w-4 h-4 mr-2" />
+          Browse All
+        </Button>
+      </div>
+
+      {categories.map(category => (
+        <div key={category} className="space-y-3">
+          <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+            {category}
+          </h4>
+          
+          <div className="grid gap-3">
+            {integrations
+              .filter(integration => integration.category === category)
+              .map(integration => (
+                <Card key={integration.id} className="p-4 hover:bg-card/50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex-shrink-0 p-2 bg-muted/50 rounded-lg">
+                        {integration.icon}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center space-x-2">
+                          <h5 className="font-medium truncate">{integration.name}</h5>
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${getStatusColor(integration.status)}`}
+                          >
+                            {integration.status}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {integration.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      {integration.status === 'disconnected' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => connectIntegration(integration.id)}
+                          className="text-xs"
+                        >
+                          <ExternalLink className="w-3 h-3 mr-1" />
+                          Connect
+                        </Button>
+                      )}
+                      
+                      <Switch
+                        checked={integration.enabled}
+                        onCheckedChange={() => toggleIntegration(integration.id)}
+                        disabled={integration.status !== 'connected' && integration.status !== 'disconnected'}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              ))
+            }
+          </div>
+        </div>
+      ))}
+
+      {selectedIntegrations.length > 0 && (
+        <div className="pt-4 border-t border-border">
+          <h4 className="text-sm font-medium mb-2">Active Integrations</h4>
+          <div className="flex flex-wrap gap-2">
+            {selectedIntegrations.map(id => {
+              const integration = integrations.find(i => i.id === id);
+              return integration ? (
+                <Badge key={id} variant="secondary" className="flex items-center space-x-1">
+                  {integration.icon}
+                  <span>{integration.name}</span>
+                </Badge>
+              ) : null;
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
