@@ -49,6 +49,45 @@ export type Database = {
           },
         ]
       }
+      composio_connections: {
+        Row: {
+          auth_config_id: string
+          connection_id: string | null
+          connection_request_id: string | null
+          created_at: string
+          id: string
+          integration_id: string
+          redirect_url: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auth_config_id: string
+          connection_id?: string | null
+          connection_request_id?: string | null
+          created_at?: string
+          id?: string
+          integration_id: string
+          redirect_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auth_config_id?: string
+          connection_id?: string | null
+          connection_request_id?: string | null
+          created_at?: string
+          id?: string
+          integration_id?: string
+          redirect_url?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       guests: {
         Row: {
           created_at: string
