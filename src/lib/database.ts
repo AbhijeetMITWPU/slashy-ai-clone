@@ -25,17 +25,17 @@ export interface Message {
   created_at: string;
 }
 
-// Guest Management
+// Guest Management - Now handled through edge functions for security
 export const createGuest = async (name: string, sessionId: string): Promise<Guest | null> => {
   try {
-    const { data, error } = await supabase
-      .from('guests')
-      .insert({
+    // Use edge function for secure guest creation
+    const { data, error } = await supabase.functions.invoke('manage-guest', {
+      body: {
+        action: 'create',
         name,
         session_id: sessionId
-      })
-      .select()
-      .single();
+      }
+    });
 
     if (error) throw error;
     return data;
@@ -47,11 +47,13 @@ export const createGuest = async (name: string, sessionId: string): Promise<Gues
 
 export const getGuestBySessionId = async (sessionId: string): Promise<Guest | null> => {
   try {
-    const { data, error } = await supabase
-      .from('guests')
-      .select('*')
-      .eq('session_id', sessionId)
-      .maybeSingle();
+    // Use edge function for secure guest lookup
+    const { data, error } = await supabase.functions.invoke('manage-guest', {
+      body: {
+        action: 'get',
+        session_id: sessionId
+      }
+    });
 
     if (error) throw error;
     return data;
@@ -63,10 +65,13 @@ export const getGuestBySessionId = async (sessionId: string): Promise<Guest | nu
 
 export const updateGuestActivity = async (sessionId: string): Promise<void> => {
   try {
-    await supabase
-      .from('guests')
-      .update({ last_active_at: new Date().toISOString() })
-      .eq('session_id', sessionId);
+    // Use edge function for secure guest update
+    await supabase.functions.invoke('manage-guest', {
+      body: {
+        action: 'update_activity',
+        session_id: sessionId
+      }
+    });
   } catch (error) {
     console.error('Error updating guest activity:', error);
   }

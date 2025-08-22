@@ -2,3 +2,6 @@ project_id = "fzooqrfnurkvhgoymbxq"
 
 [functions.chat-with-composio]
 verify_jwt = false
+
+[functions.manage-guest]
+verify_jwt = false
