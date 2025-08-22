@@ -142,20 +142,21 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
 
   const getAuthConfigId = (integrationId: string): string | null => {
     const configMap: Record<string, string> = {
-      'gmail': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GMAIL || '',
-      'calendar': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GOOGLECALENDAR || '',
-      'github': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GITHUB || '',
-      'slack': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_SLACK || '',
-      'notion': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_NOTION || '',
-      'linear': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_LINEAR || '',
-      'googlesheets': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GoogleSheets || '',
-      'googledrive': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GoogleDrive || '',
-      'googledocs': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GoogleDocs || '',
+      'gmail': import.meta.env.VITE_COMPOSIO_AUTH_GMAIL || '',
+      'calendar': import.meta.env.VITE_COMPOSIO_AUTH_GOOGLECALENDAR || '',
+      'github': import.meta.env.VITE_COMPOSIO_AUTH_GITHUB || '',
+      'slack': import.meta.env.VITE_COMPOSIO_AUTH_SLACK || '',
+      'notion': import.meta.env.VITE_COMPOSIO_AUTH_NOTION || '',
+      'linear': import.meta.env.VITE_COMPOSIO_AUTH_LINEAR || '',
+      'googlesheets': import.meta.env.VITE_COMPOSIO_AUTH_GoogleSheets || '',
+      'googledrive': import.meta.env.VITE_COMPOSIO_AUTH_GoogleDrive || '',
+      'googledocs': import.meta.env.VITE_COMPOSIO_AUTH_GoogleDocs || '',
     };
     
     const authConfigId = configMap[integrationId];
     if (!authConfigId) {
-      console.error(`No auth config ID found for integration: ${integrationId}`);
+      console.error(`No auth config ID found for integration: ${integrationId}. Available configs:`, Object.keys(configMap));
+      console.error('Config map values:', configMap);
       return null;
     }
     
