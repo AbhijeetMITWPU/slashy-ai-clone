@@ -82,6 +82,8 @@ serve(async (req) => {
       }
 
       // Initiate connection with Composio v3 API using correct endpoint
+      console.log('Calling Composio API with:', { toolName, userId: user.id });
+      
       const response = await fetch('https://backend.composio.dev/api/v3/toolkits/initiate', {
         method: 'POST',
         headers: {
@@ -93,10 +95,17 @@ serve(async (req) => {
           userId: user.id,
         }),
       });
+      
+      console.log('Composio API response status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.text();
-        console.error('Composio API error:', errorData);
+        console.error('Composio API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          body: errorData
+        });
         return new Response(JSON.stringify({ 
           error: `Failed to initiate connection: ${response.status} - ${errorData}` 
         }), {
@@ -110,7 +119,7 @@ serve(async (req) => {
       console.log('Composio connection initiated:', connectionData);
 
       // Store connection request in database for tracking
-      await supabase
+      const dbResult = await supabase
         .from('composio_connections')
         .upsert({
           user_id: user.id,
@@ -121,6 +130,11 @@ serve(async (req) => {
           redirect_url: connectionData.redirectUrl,
           created_at: new Date().toISOString(),
         });
+
+      if (dbResult.error) {
+        console.error('Database error storing connection:', dbResult.error);
+        // Continue anyway - don't fail the OAuth flow due to database issues
+      }
 
       return new Response(JSON.stringify({
         redirectUrl: connectionData.redirectUrl,
