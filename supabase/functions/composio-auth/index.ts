@@ -50,9 +50,9 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           integrationId: integrationId,
-          data: {},
           authConfig: authConfigId,
           userUuid: userId,
+          data: {}
         }),
       });
 
@@ -91,8 +91,8 @@ serve(async (req) => {
         throw new Error('Missing connection request ID');
       }
 
-      // Check connection status with Composio
-      const response = await fetch(`https://backend.composio.dev/api/v1/connectedAccounts/${connectionRequestId}`, {
+      // Check connection status with Composio v3 API
+      const response = await fetch(`https://backend.composio.dev/api/v3/connected-accounts/${connectionRequestId}`, {
         method: 'GET',
         headers: {
           'X-API-Key': composioApiKey,
@@ -109,7 +109,7 @@ serve(async (req) => {
       console.log('Composio connection status:', statusData);
 
       // Update database with current status
-      if (statusData.status === 'ACTIVE') {
+      if (statusData.connectionStatus === 'ACTIVE' || statusData.status === 'ACTIVE') {
         await supabase
           .from('composio_connections')
           .update({
