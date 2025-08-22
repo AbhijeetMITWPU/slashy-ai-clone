@@ -41,16 +41,18 @@ serve(async (req) => {
         throw new Error('Missing required parameters for initiation');
       }
 
-      // Initiate connection with Composio
-      const response = await fetch('https://backend.composio.dev/api/v1/connectedAccounts', {
+      // Initiate connection with Composio v3 API
+      const response = await fetch('https://backend.composio.dev/api/v3/connected-accounts/initiate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': composioApiKey,
         },
         body: JSON.stringify({
-          userId: userId,
+          integrationId: integrationId,
+          data: {},
           authConfig: authConfigId,
+          userUuid: userId,
         }),
       });
 

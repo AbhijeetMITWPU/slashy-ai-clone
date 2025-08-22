@@ -92,6 +92,8 @@ export const ComposioAuth = ({
                 title: "Authentication successful",
                 description: `${integrationId} has been connected successfully.`,
               });
+              // Redirect to chat after successful connection
+              window.location.href = '/chat';
               return;
             }
 

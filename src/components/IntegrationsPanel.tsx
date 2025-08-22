@@ -252,6 +252,8 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
                                 : i
                             ));
                             toast.success(`${integration.name} connected successfully!`);
+                            // Redirect to chat after successful connection
+                            window.location.href = '/chat';
                           }}
                           onAuthError={(error) => {
                             toast.error(`Failed to connect ${integration.name}: ${error}`);
