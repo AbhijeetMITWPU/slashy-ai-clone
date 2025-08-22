@@ -53,7 +53,7 @@ serve(async (req) => {
           authConfig: authConfigId,
           userUuid: userId,
           data: {},
-          redirectUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/composio-auth/callback`
+          redirectUrl: 'https://backend.composio.dev/api/v3/toolkits/auth/callback'
         }),
       });
 
