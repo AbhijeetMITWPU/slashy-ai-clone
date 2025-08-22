@@ -5,17 +5,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface ComposioAuthProps {
-  integrationId: string;
-  authConfigId: string;
-  userId: string;
+  toolName: string;
   onAuthComplete?: (connectionId: string) => void;
   onAuthError?: (error: string) => void;
 }
 
 export const ComposioAuth = ({ 
-  integrationId, 
-  authConfigId, 
-  userId, 
+  toolName, 
   onAuthComplete, 
   onAuthError 
 }: ComposioAuthProps) => {
@@ -26,19 +22,25 @@ export const ComposioAuth = ({
     setIsAuthenticating(true);
     
     console.log('ComposioAuth initiateAuth called with:', {
-      integrationId,
-      authConfigId,
-      userId
+      toolName
     });
     
     try {
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.access_token) {
+        throw new Error('Authentication required. Please login first.');
+      }
+
       // Call our edge function to initiate Composio authentication
       const response = await supabase.functions.invoke('composio-auth', {
         body: {
           action: 'initiate',
-          userId,
-          authConfigId,
-          integrationId
+          toolName
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
         }
       });
 
@@ -50,65 +52,8 @@ export const ComposioAuth = ({
 
       const { redirectUrl, connectionRequestId } = response.data;
 
-      // Open auth window
-      const authWindow = window.open(
-        redirectUrl,
-        'composio-auth',
-        'width=600,height=700,scrollbars=yes,resizable=yes'
-      );
-
-      if (!authWindow) {
-        throw new Error('Popup blocked. Please allow popups for this site.');
-      }
-
-      // Poll for completion
-      const pollForCompletion = async () => {
-        const maxAttempts = 60; // 5 minutes
-        let attempts = 0;
-
-        const checkStatus = async () => {
-          if (attempts >= maxAttempts) {
-            authWindow.close();
-            throw new Error('Authentication timed out');
-          }
-
-          if (authWindow.closed) {
-            throw new Error('Authentication window was closed');
-          }
-
-          try {
-            const statusResponse = await supabase.functions.invoke('composio-auth', {
-              body: {
-                action: 'check_status',
-                connectionRequestId,
-                userId
-              }
-            });
-
-            if (statusResponse.data?.status === 'completed') {
-              authWindow.close();
-              onAuthComplete?.(statusResponse.data.connectionId);
-              toast({
-                title: "Authentication successful",
-                description: `${integrationId} has been connected successfully.`,
-              });
-              // Redirect to chat after successful connection
-              window.location.href = '/chat';
-              return;
-            }
-
-            attempts++;
-            setTimeout(checkStatus, 5000); // Check every 5 seconds
-          } catch (error) {
-            console.error('Error checking auth status:', error);
-            setTimeout(checkStatus, 5000);
-          }
-        };
-
-        checkStatus();
-      };
-
-      pollForCompletion();
+      // Redirect user to Composio OAuth flow
+      window.location.href = redirectUrl;
 
     } catch (error) {
       console.error('Authentication error:', error);

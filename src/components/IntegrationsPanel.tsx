@@ -241,9 +241,7 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
                       <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         {integration.status === 'disconnected' ? (
                         <ComposioAuth
-                          integrationId={integration.id}
-                          authConfigId={getAuthConfigId(integration.id) || ''}
-                          userId={user?.id || ''}
+                          toolName={integration.id}
                           onAuthComplete={() => {
                             // Update integration status to connected
                             setIntegrations(prev => prev.map(i => 
@@ -252,8 +250,6 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
                                 : i
                             ));
                             toast.success(`${integration.name} connected successfully!`);
-                            // Redirect to chat after successful connection
-                            window.location.href = '/chat';
                           }}
                           onAuthError={(error) => {
                             toast.error(`Failed to connect ${integration.name}: ${error}`);
