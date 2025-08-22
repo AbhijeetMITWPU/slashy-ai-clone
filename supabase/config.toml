@@ -1,7 +1,17 @@
 project_id = "fzooqrfnurkvhgoymbxq"
 
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
 [functions.chat-with-composio]
 verify_jwt = false
 
 [functions.manage-guest]
+verify_jwt = false
+
+[functions.composio-auth]
 verify_jwt = false

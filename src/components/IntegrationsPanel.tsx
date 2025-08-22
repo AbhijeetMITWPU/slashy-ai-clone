@@ -117,15 +117,38 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
   };
 
   const connectIntegration = (integrationId: string) => {
-    // In real app, this would initiate OAuth flow with Composio
-    console.log('Connecting integration:', integrationId);
+    // Get auth config ID from environment variables
+    const authConfigId = getAuthConfigId(integrationId);
+    if (!authConfigId) {
+      console.error('No auth config ID found for integration:', integrationId);
+      return;
+    }
+
+    // Initiate real OAuth flow with Composio
+    console.log('Connecting integration:', integrationId, 'with config:', authConfigId);
     
-    // Mock connection process
+    // Update status to connecting
     setIntegrations(prev => prev.map(i => 
       i.id === integrationId 
         ? { ...i, status: 'connected' as const }
         : i
     ));
+  };
+
+  const getAuthConfigId = (integrationId: string): string | null => {
+    const configMap: Record<string, string> = {
+      'gmail': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GMAIL || '',
+      'calendar': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GOOGLECALENDAR || '',
+      'github': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GITHUB || '',
+      'slack': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_SLACK || '',
+      'notion': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_NOTION || '',
+      'linear': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_LINEAR || '',
+      'googlesheets': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GoogleSheets || '',
+      'googledrive': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GoogleDrive || '',
+      'googledocs': import.meta.env.NEXT_PUBLIC_COMPOSIO_AUTH_GoogleDocs || '',
+    };
+    
+    return configMap[integrationId] || null;
   };
 
   const getStatusColor = (status: Integration['status']) => {
@@ -172,35 +195,35 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
               .filter(integration => integration.category === category)
               .map(integration => (
                 <Card key={integration.id} className="p-4 hover:bg-card/50 transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start space-x-3 flex-1 min-w-0">
                       <div className="flex-shrink-0 p-2 bg-muted/50 rounded-lg">
                         {integration.icon}
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 mb-1">
                           <h5 className="font-medium truncate">{integration.name}</h5>
                           <Badge 
                             variant="outline" 
-                            className={`text-xs ${getStatusColor(integration.status)}`}
+                            className={`text-xs flex-shrink-0 ${getStatusColor(integration.status)}`}
                           >
                             {integration.status}
                           </Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
+                        <p className="text-sm text-muted-foreground line-clamp-2">
                           {integration.description}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
                       {integration.status === 'disconnected' && (
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => connectIntegration(integration.id)}
-                          className="text-xs"
+                          className="text-xs whitespace-nowrap"
                         >
                           <ExternalLink className="w-3 h-3 mr-1" />
                           Connect

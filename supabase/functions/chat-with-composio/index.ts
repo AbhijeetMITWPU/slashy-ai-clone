@@ -38,8 +38,8 @@ serve(async (req) => {
     
     console.log('Chat request:', { message, chatId, guestId, userId, integrations });
 
-    // Get available tools from Composio based on user integrations
-    const tools = await getComposioTools(integrations);
+    // Get available tools from Composio based on user integrations and connections
+    const tools = await getComposioTools(integrations, userId || guestId);
     
     // Create or get existing chat
     let currentChatId = chatId;
@@ -59,7 +59,7 @@ serve(async (req) => {
     const chatHistory = await getChatHistory(currentChatId);
 
     // Generate response using Gemini with Composio tools
-    const response = await generateGeminiResponse(chatHistory, tools);
+    const response = await generateGeminiResponse(chatHistory, tools, userId || guestId);
 
     // Save assistant message to database
     await saveMessage(currentChatId, response, 'assistant');
@@ -83,86 +83,153 @@ serve(async (req) => {
   }
 });
 
-async function getComposioTools(integrations: string[]) {
-  if (!composioApiKey || integrations.length === 0) {
+async function getComposioTools(integrations: string[], userId?: string) {
+  if (!composioApiKey || integrations.length === 0 || !userId) {
+    console.log('No Composio API key, integrations, or user ID provided');
     return [];
   }
 
   try {
-    const response = await fetch('https://backend.composio.dev/api/v1/tools', {
-      headers: {
-        'Authorization': `Bearer ${composioApiKey}`,
-        'Content-Type': 'application/json'
-      }
-    });
+    console.log('Fetching tools for integrations and user:', integrations, userId);
+    
+    // First, check which integrations the user has connected
+    const { data: connectedIntegrations } = await supabase
+      .from('composio_connections')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'completed')
+      .in('integration_id', integrations);
 
-    if (!response.ok) {
-      console.error('Composio API error:', response.status, await response.text());
+    if (!connectedIntegrations || connectedIntegrations.length === 0) {
+      console.log('No connected integrations found for user');
       return [];
     }
 
-    const data = await response.json();
-    
-    // Filter tools based on user's integrations
-    const filteredTools = data.tools?.filter((tool: any) => 
-      integrations.includes(tool.app_name?.toLowerCase())
-    ) || [];
+    console.log('Connected integrations:', connectedIntegrations);
 
-    console.log(`Found ${filteredTools.length} tools for integrations:`, integrations);
+    // Get tools from Composio API for the connected user
+    const response = await fetch(`https://backend.composio.dev/api/v1/actions?userId=${userId}`, {
+      method: 'GET',
+      headers: {
+        'X-API-Key': composioApiKey,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch tools from Composio:', response.status);
+      return [];
+    }
+
+    const allTools = await response.json();
+    console.log('Total tools available for user:', allTools.length);
+
+    // Filter tools based on user's connected integrations
+    const connectedAppNames = connectedIntegrations.map(conn => conn.integration_id.toLowerCase());
+    const filteredTools = allTools.filter((tool: any) => {
+      const toolApp = tool.appName?.toLowerCase();
+      return connectedAppNames.some(appName => 
+        toolApp?.includes(appName) || 
+        appName.includes(toolApp)
+      );
+    });
+
+    console.log('Filtered tools for connected integrations:', filteredTools.length);
     return filteredTools;
+
   } catch (error) {
     console.error('Error fetching Composio tools:', error);
     return [];
   }
 }
 
-async function generateGeminiResponse(messages: Message[], tools: any[] = []) {
+async function generateGeminiResponse(messages: Message[], tools: any[] = [], userId?: string) {
   if (!geminiApiKey) {
-    throw new Error('Gemini API key not configured');
+    console.error('Gemini API key not found');
+    return 'I apologize, but the AI service is not properly configured. Please contact support.';
   }
 
   try {
-    const systemPrompt = `You are Slashy, an AI assistant that helps users complete tasks across different applications. 
-    You can access and use various tools when available to help users with their requests.
-    
-    ${tools.length > 0 ? `Available tools: ${tools.map(t => `- ${t.name}: ${t.description || 'No description'}`).join('\n')}` : 'No external tools currently available.'}
-    
-    Be helpful, concise, and action-oriented. When users ask you to do something that requires external tools, explain what you can do and guide them through the process.`;
+    console.log('Generating response with Gemini, tools available:', tools.length);
 
-    const geminiMessages = [
-      { role: 'user', parts: [{ text: systemPrompt }] },
+    // Create system message for Slashy - intelligent task handling
+    const systemMessage = `You are Slashy, an advanced AI assistant with access to various productivity tools and integrations. 
+
+    Your core capabilities:
+    - Smart task analysis and workflow automation
+    - Cross-application data management
+    - Intelligent tool selection and execution
+    - Proactive task suggestions and optimization
+    
+    Behavioral guidelines:
+    1. ANALYZE user intent thoroughly before taking action
+    2. SUGGEST the most efficient workflow for complex tasks
+    3. USE available tools when they can genuinely help the user
+    4. EXPLAIN what you're doing and why
+    5. BE PROACTIVE in offering related helpful actions
+    6. MAINTAIN context across the conversation
+    
+    Available integrations and tools: ${tools.length > 0 ? 
+      tools.map(t => `${t.name} (${t.appName}) - ${t.description || 'No description'}`).join('\n') : 
+      'No connected integrations. Suggest connecting relevant tools for specific tasks.'}
+    
+    Current conversation context: Help the user accomplish their goals efficiently and intelligently.`;
+
+    // Format messages for Gemini
+    const formattedMessages = [
+      {
+        role: 'user',
+        parts: [{ text: systemMessage }]
+      },
       ...messages.map(msg => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }]
       }))
     ];
 
-    const requestBody = {
-      contents: geminiMessages,
+    // Prepare the request body
+    const requestBody: any = {
+      contents: formattedMessages,
       generationConfig: {
+        temperature: 0.8, // Slightly higher for more creative problem-solving
+        topK: 40,
+        topP: 0.95,
         maxOutputTokens: 2048,
-        temperature: 0.7
-      }
+      },
     };
 
-    // Add function calling capability if tools are available
+    // Add function declarations if tools are available
     if (tools.length > 0) {
       requestBody.tools = [{
         functionDeclarations: tools.map(tool => ({
           name: tool.name,
-          description: tool.description || `Execute ${tool.name} action`,
-          parameters: tool.parameters || { type: 'object', properties: {} }
+          description: tool.description || `Execute ${tool.name} action for ${tool.appName}`,
+          parameters: tool.parameters || {
+            type: 'object',
+            properties: {
+              task_description: {
+                type: 'string',
+                description: 'Description of the task to perform'
+              }
+            },
+            required: ['task_description']
+          }
         }))
       }];
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-    });
+    console.log('Sending request to Gemini with', formattedMessages.length, 'messages and', tools.length, 'tools');
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -171,16 +238,41 @@ async function generateGeminiResponse(messages: Message[], tools: any[] = []) {
     }
 
     const data = await response.json();
-    
-    if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
-      console.error('Invalid Gemini response:', data);
-      throw new Error('Invalid response from Gemini API');
+    console.log('Gemini response received');
+
+    // Handle function calls if present
+    if (data.candidates?.[0]?.content?.parts?.some((part: any) => part.functionCall)) {
+      console.log('Function calls detected in response');
+      
+      const functionCalls = data.candidates[0].content.parts
+        .filter((part: any) => part.functionCall);
+      
+      // For each function call, we could execute it via Composio
+      const toolResults = [];
+      for (const call of functionCalls) {
+        console.log('Would execute tool:', call.functionCall.name, 'with args:', call.functionCall.args);
+        
+        // Here you would call the actual Composio tool execution
+        // For now, we'll simulate the response
+        toolResults.push({
+          toolName: call.functionCall.name,
+          status: 'simulated',
+          result: 'Tool execution simulation - integration coming soon!'
+        });
+      }
+      
+      const responseText = data.candidates?.[0]?.content?.parts
+        ?.find((part: any) => part.text)?.text || 
+        `I've identified ${functionCalls.length} action(s) to help you: ${functionCalls.map((call: any) => call.functionCall.name).join(', ')}. Full tool execution is being implemented!`;
+      
+      return responseText;
     }
 
-    return data.candidates[0].content.parts[0].text;
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'I apologize, but I could not generate a response.';
+
   } catch (error) {
     console.error('Error generating Gemini response:', error);
-    throw new Error(`Failed to generate response: ${error.message}`);
+    return 'I apologize, but I encountered an error while processing your request. Please try again.';
   }
 }
 
