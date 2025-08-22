@@ -25,6 +25,12 @@ export const ComposioAuth = ({
   const initiateAuth = async () => {
     setIsAuthenticating(true);
     
+    console.log('ComposioAuth initiateAuth called with:', {
+      integrationId,
+      authConfigId,
+      userId
+    });
+    
     try {
       // Call our edge function to initiate Composio authentication
       const response = await supabase.functions.invoke('composio-auth', {
@@ -35,6 +41,8 @@ export const ComposioAuth = ({
           integrationId
         }
       });
+
+      console.log('composio-auth response:', response);
 
       if (response.error) {
         throw new Error(response.error.message || 'Failed to initiate authentication');

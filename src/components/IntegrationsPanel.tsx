@@ -141,6 +141,10 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
   };
 
   const getAuthConfigId = (integrationId: string): string | null => {
+    // Debug: log all environment variables
+    console.log('All VITE environment variables:', Object.keys(import.meta.env).filter(key => key.startsWith('VITE_')));
+    console.log('Raw import.meta.env:', import.meta.env);
+    
     const configMap: Record<string, string> = {
       'gmail': import.meta.env.VITE_COMPOSIO_AUTH_GMAIL || '',
       'calendar': import.meta.env.VITE_COMPOSIO_AUTH_GOOGLECALENDAR || '',
@@ -152,6 +156,10 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
       'googledrive': import.meta.env.VITE_COMPOSIO_AUTH_GoogleDrive || '',
       'googledocs': import.meta.env.VITE_COMPOSIO_AUTH_GoogleDocs || '',
     };
+    
+    console.log(`Looking for integration: ${integrationId}`);
+    console.log('Config map:', configMap);
+    console.log(`Value for ${integrationId}:`, configMap[integrationId]);
     
     const authConfigId = configMap[integrationId];
     if (!authConfigId) {
