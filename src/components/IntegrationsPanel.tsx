@@ -122,15 +122,15 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
   };
 
   const connectIntegration = (integrationId: string) => {
-    // Get auth config ID from environment variables
+    // Get auth config ID from environment variables  
     const authConfigId = getAuthConfigId(integrationId);
     if (!authConfigId) {
       console.error('No auth config ID found for integration:', integrationId);
+      toast.error(`Configuration missing for ${integrationId}. Please check environment variables.`);
       return;
     }
 
-    // Initiate real OAuth flow with Composio
-    console.log('Connecting integration:', integrationId, 'with config:', authConfigId);
+    console.log('Connecting integration:', integrationId, 'with auth config:', authConfigId);
     
     // Update status to connecting
     setIntegrations(prev => prev.map(i => 
@@ -241,7 +241,7 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
                       <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         {integration.status === 'disconnected' ? (
                         <ComposioAuth
-                          toolName={integration.id}
+                          toolName={getAuthConfigId(integration.id) || integration.id}
                           onAuthComplete={() => {
                             // Update integration status to connected
                             setIntegrations(prev => prev.map(i => 

@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { ExternalLink, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface ComposioAuthProps {
-  toolName: string;
+  toolName: string; // This is actually the auth config ID
   onAuthComplete?: (connectionId: string) => void;
   onAuthError?: (error: string) => void;
 }
@@ -21,7 +21,7 @@ export const ComposioAuth = ({
   const initiateAuth = async () => {
     setIsAuthenticating(true);
     
-    console.log('ComposioAuth initiateAuth called with:', {
+    console.log('ComposioAuth initiateAuth called with auth config ID:', {
       toolName
     });
     
@@ -52,7 +52,9 @@ export const ComposioAuth = ({
 
       const { redirectUrl, connectionRequestId } = response.data;
 
-      // Redirect user to Composio OAuth flow
+      console.log('Redirecting to Composio OAuth:', redirectUrl);
+      
+      // Redirect user to Composio OAuth flow - they will be redirected back to /auth/callback after completion
       window.location.href = redirectUrl;
 
     } catch (error) {

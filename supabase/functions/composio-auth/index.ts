@@ -84,15 +84,22 @@ serve(async (req) => {
       // Initiate connection with Composio v3 API using correct endpoint
       console.log('Calling Composio API with:', { toolName, userId: user.id });
       
-      const response = await fetch('https://backend.composio.dev/api/v3/toolkits/initiate', {
+      // Create callback URL that redirects back to our chat after OAuth completion
+      const callbackUrl = `${req.headers.get('origin') || 'http://localhost:5173'}/auth/callback`;
+      
+      const response = await fetch('https://backend.composio.dev/api/v3/connected-accounts/initiate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-API-Key': composioApiKey,
         },
         body: JSON.stringify({
-          toolName,
-          userId: user.id,
+          user_id: user.id,
+          auth_config_id: toolName, // Using the auth config ID from environment
+          callback_url: callbackUrl,
+          config: {
+            auth_scheme: "OAUTH2"
+          }
         }),
       });
       
@@ -124,10 +131,10 @@ serve(async (req) => {
         .upsert({
           user_id: user.id,
           integration_id: toolName,
-          auth_config_id: toolName, // Using toolName as authConfigId for new API
-          connection_request_id: connectionData.connectionStatus?.id || connectionData.id,
+          auth_config_id: toolName,
+          connection_request_id: connectionData.id,
           status: 'pending',
-          redirect_url: connectionData.redirectUrl,
+          redirect_url: connectionData.redirect_url,
           created_at: new Date().toISOString(),
         });
 
@@ -137,8 +144,8 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({
-        redirectUrl: connectionData.redirectUrl,
-        connectionRequestId: connectionData.connectionStatus?.id || connectionData.id,
+        redirectUrl: connectionData.redirect_url,
+        connectionRequestId: connectionData.id,
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -154,7 +161,7 @@ serve(async (req) => {
       }
 
       // Check connection status with Composio v3 API
-      const response = await fetch(`https://backend.composio.dev/api/v3/connected-accounts/${connectionRequestId}`, {
+      const response = await fetch(`https://backend.composio.dev/api/v3/connected-accounts?connection_request_id=${connectionRequestId}`, {
         method: 'GET',
         headers: {
           'X-API-Key': composioApiKey,
@@ -175,13 +182,14 @@ serve(async (req) => {
       const statusData = await response.json();
       console.log('Composio connection status:', statusData);
 
-      // Update database with current status
-      if (statusData.connectionStatus === 'ACTIVE' || statusData.status === 'ACTIVE') {
+      // Update database with current status - check for successful connection
+      const connectedAccount = statusData.items?.[0]; // API returns array in items
+      if (connectedAccount && (connectedAccount.status === 'ACTIVE' || connectedAccount.connectionStatus === 'ACTIVE')) {
         await supabase
           .from('composio_connections')
           .update({
             status: 'completed',
-            connection_id: statusData.id,
+            connection_id: connectedAccount.id,
             updated_at: new Date().toISOString(),
           })
           .eq('connection_request_id', connectionRequestId)
@@ -189,7 +197,7 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           status: 'completed',
-          connectionId: statusData.id,
+          connectionId: connectedAccount.id,
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
