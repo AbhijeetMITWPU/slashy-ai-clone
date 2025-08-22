@@ -5,7 +5,7 @@ import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { ComposioAuth } from './ComposioAuth';
 import { toast } from 'sonner';
-import { useGuestAuth } from '@/hooks/useGuestAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { cn } from '@/lib/utils';
 import { 
   Calendar, 
@@ -37,7 +37,7 @@ interface IntegrationsPanelProps {
 export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }: IntegrationsPanelProps) => {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
-  const { guestId } = useGuestAuth();
+  const { user } = useAuth();
 
   // Mock integrations data - in real app this would come from Composio API
   useEffect(() => {
@@ -240,23 +240,23 @@ export const IntegrationsPanel = ({ selectedIntegrations, onIntegrationsChange }
 
                       <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         {integration.status === 'disconnected' ? (
-                          <ComposioAuth
-                            integrationId={integration.id}
-                            authConfigId={getAuthConfigId(integration.id) || ''}
-                            userId={guestId || ''}
-                            onAuthComplete={() => {
-                              // Update integration status to connected
-                              setIntegrations(prev => prev.map(i => 
-                                i.id === integration.id 
-                                  ? { ...i, status: 'connected' as const }
-                                  : i
-                              ));
-                              toast.success(`${integration.name} connected successfully!`);
-                            }}
-                            onAuthError={(error) => {
-                              toast.error(`Failed to connect ${integration.name}: ${error}`);
-                            }}
-                          />
+                        <ComposioAuth
+                          integrationId={integration.id}
+                          authConfigId={getAuthConfigId(integration.id) || ''}
+                          userId={user?.id || ''}
+                          onAuthComplete={() => {
+                            // Update integration status to connected
+                            setIntegrations(prev => prev.map(i => 
+                              i.id === integration.id 
+                                ? { ...i, status: 'connected' as const }
+                                : i
+                            ));
+                            toast.success(`${integration.name} connected successfully!`);
+                          }}
+                          onAuthError={(error) => {
+                            toast.error(`Failed to connect ${integration.name}: ${error}`);
+                          }}
+                        />
                         ) : (
                           <Button
                             variant="outline"

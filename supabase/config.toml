@@ -10,8 +10,5 @@ max_rows = 1000
 [functions.chat-with-composio]
 verify_jwt = false
 
-[functions.manage-guest]
-verify_jwt = false
-
 [functions.composio-auth]
 verify_jwt = false

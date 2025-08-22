@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { 
   Send, 
   Settings, 
@@ -18,9 +19,11 @@ import {
   Slack,
   Search,
   Zap,
-  Bot
+  Bot,
+  LogOut,
+  User
 } from 'lucide-react';
-import { useGuestAuth } from '@/hooks/useGuestAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { IntegrationsPanel } from '@/components/IntegrationsPanel';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -39,7 +42,7 @@ const Chat = () => {
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
   const [selectedIntegrations, setSelectedIntegrations] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { isGuest, guestName, guestId } = useGuestAuth();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,13 +53,13 @@ const Chat = () => {
     if (messages.length === 0) {
       const welcomeMessage: Message = {
         id: '1',
-        content: `Hello${isGuest ? ` ${guestName}` : ''}! I'm Slashy, your AI assistant. I can help you with tasks across different applications. What would you like to do today?`,
+        content: `Hello${user?.user_metadata?.full_name ? ` ${user.user_metadata.full_name}` : ''}! I'm Slashy, your AI assistant. I can help you with tasks across different applications. What would you like to do today?`,
         role: 'assistant',
         timestamp: new Date()
       };
       setMessages([welcomeMessage]);
     }
-  }, [isGuest, guestName, messages.length]);
+  }, [user, messages.length]);
 
   const sendMessage = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -77,8 +80,7 @@ const Chat = () => {
         body: {
           message: userMessage.content,
           chatId: currentChatId,
-          guestId: isGuest ? guestId : undefined,
-          userId: !isGuest ? undefined : undefined, // TODO: Add user auth
+          userId: user?.id,
           integrations: selectedIntegrations
         }
       });
@@ -226,6 +228,21 @@ const Chat = () => {
                 </div>
               </SheetContent>
             </Sheet>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <User className="w-4 h-4 mr-2" />
+                  {user?.user_metadata?.full_name || user?.email || 'User'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => signOut()}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -269,7 +286,7 @@ const Chat = () => {
                     {message.role === 'user' && (
                       <div className="w-8 h-8 bg-muted/50 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
                         <span className="text-sm font-medium">
-                          {isGuest ? guestName?.[0]?.toUpperCase() || 'G' : 'U'}
+                          {user?.user_metadata?.full_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || 'U'}
                         </span>
                       </div>
                     )}
