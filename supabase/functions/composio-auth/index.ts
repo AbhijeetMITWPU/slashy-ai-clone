@@ -49,10 +49,11 @@ serve(async (req) => {
           'X-API-Key': composioApiKey,
         },
         body: JSON.stringify({
-          integrationId: integrationId,
+          integrationId,
           authConfig: authConfigId,
           userUuid: userId,
-          data: {}
+          data: {},
+          redirectUrl: `${Deno.env.get('SUPABASE_URL')}/functions/v1/composio-auth/callback`
         }),
       });
 
